@@ -17,23 +17,77 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Extract Android project
+      - name: Find and extract Android project
+        shell: bash
         run: |
+          set -e
+
+          ZIP_FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+
+          if [ -z "$ZIP_FILE" ]; then
+            echo "ERROR: No Android project ZIP found."
+            exit 1
+          fi
+
+          echo "Using ZIP: $ZIP_FILE"
+
           rm -rf project
           mkdir project
-          unzip -q TrackRB_Polished_v1_GitHub_Fix.zip -d project
+
+          unzip -q "$ZIP_FILE" -d project
+
+          echo "Searching for Android project..."
+
+          SETTINGS_FILE=$(find "$GITHUB_WORKSPACE/project" \
+            -type f \
+            \( -name "settings.gradle" -o -name "settings.gradle.kts" \) \
+            -print -quit)
+
+          if [ -z "$SETTINGS_FILE" ]; then
+            echo "ERROR: settings.gradle not found."
+            echo "Extracted files:"
+            find project -maxdepth 5 -type f
+            exit 1
+          fi
+
+          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
+
+          echo "Android project found at:"
+          echo "$PROJECT_DIR"
+
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
       - name: Install Gradle
+        shell: bash
         run: |
-          curl -L -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          set -e
+
+          curl -L -o /tmp/gradle.zip \
+            https://services.gradle.org/distributions/gradle-8.9-bin.zip
+
           unzip -q /tmp/gradle.zip -d /tmp
 
       - name: Build APK
+        shell: bash
         run: |
-          cd project 
-          /tmp/gradle-8.9/bin/gradle --no-daemon assembleDebug
+          set -e
+
+          cd "$PROJECT_DIR"
+
+          echo "Building from:"
+          pwd
+
+          echo "Project files:"
+          ls -la
+
+          /tmp/gradle-8.9/bin/gradle \
+            --no-daemon \
+            assembleDebug \
+            --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TrackRB-APK
-          path: project/app/build/outputs/apk/debug/app-debug.apk
+          path: '**/build/outputs/apk/debug/app-debug.apk'
+          if-no-files-found: error
