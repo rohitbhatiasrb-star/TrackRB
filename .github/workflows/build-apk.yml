@@ -22,12 +22,12 @@ jobs:
         run: |
           set -e
 
-          ZIP_FILE=$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -name "*.zip" -print -quit)
+          ZIP_FILE="$GITHUB_WORKSPACE/TrackRB_Polished_v3_Tabular_Search_Capital.zip"
 
-          if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: No ZIP file found in repository root."
-            exit 1
-          fi
+if [ ! -f "$ZIP_FILE" ]; then
+    echo "ERROR: TrackRB_Polished_v3_Tabular_Search_Capital.zip not found."
+    exit 1
+fi
 
           echo "Using ZIP: $ZIP_FILE"
 
