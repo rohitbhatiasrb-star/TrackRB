@@ -17,15 +17,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Find and extract Android project
+      - name: Extract Android project
         shell: bash
         run: |
           set -e
 
-          ZIP_FILE=$(find . -maxdepth 1 -type f -name "*.zip" | head -n 1)
+          ZIP_FILE=$(find "$GITHUB_WORKSPACE" -maxdepth 1 -type f -name "*.zip" -print -quit)
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: No Android project ZIP found."
+            echo "ERROR: No ZIP file found in repository root."
             exit 1
           fi
 
@@ -45,8 +45,7 @@ jobs:
 
           if [ -z "$SETTINGS_FILE" ]; then
             echo "ERROR: settings.gradle not found."
-            echo "Extracted files:"
-            find project -maxdepth 5 -type f
+            find project -maxdepth 6 -type f
             exit 1
           fi
 
@@ -77,7 +76,6 @@ jobs:
           echo "Building from:"
           pwd
 
-          echo "Project files:"
           ls -la
 
           /tmp/gradle-8.9/bin/gradle \
