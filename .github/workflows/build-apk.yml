@@ -17,25 +17,24 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android
-        uses: android-actions/setup-android@v3
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '8.10.2'
-
       - name: Extract Android project
         run: |
-          mkdir -p project
-          unzip -q ApprovalActionTracker_Source_Bundle.zip -d project
+          rm -rf project
+          mkdir project
+          unzip -q TrackRB_GitHub_Fix_Corrected.zip -d project
+
+      - name: Install Gradle
+        run: |
+          curl -L -o /tmp/gradle.zip https://services.gradle.org/distributions/gradle-8.9-bin.zip
+          unzip -q /tmp/gradle.zip -d /tmp
 
       - name: Build APK
-        working-directory: project
-        run: gradle assembleRelease --no-daemon
+        run: |
+          cd project/trackrbfix
+          /tmp/gradle-8.9/bin/gradle --no-daemon assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ApprovalActionTracker-APK
-          path: project/app/build/outputs/apk/release/*.apk
+          name: TrackRB-APK
+          path: project/trackrbfix/app/build/outputs/apk/debug/app-debug.apk
