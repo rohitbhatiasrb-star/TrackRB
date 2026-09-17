@@ -27,7 +27,7 @@ jobs:
           rm -rf project
           mkdir project
 
-          unzip -q TrackRB_V12_Complete_History_Final_Recipient_Mandatory.zip -d project
+          unzip -q TrackRB_V13_Compile_Fixed_History_Final_Recipient.zip -d project
 
           find project -name settings.gradle -print
 
