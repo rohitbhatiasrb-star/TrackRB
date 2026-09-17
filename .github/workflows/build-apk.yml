@@ -1,15 +1,11 @@
 
-name: Build APK
+name: Build TrackRB V10 APK
 
 on:
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   build:
-    name: Build TrackRB v9.1 APK
     runs-on: ubuntu-latest
 
     steps:
@@ -24,46 +20,37 @@ jobs:
 
       - name: Verify ZIP file
         run: |
-          ZIP_FILE="TrackRB_V9_1_Mandatory_History_Ready.zip"
-
-          if [ ! -f "$ZIP_FILE" ]; then
-            echo "ERROR: ZIP file not found:"
-            echo "$ZIP_FILE"
-            echo ""
-            echo "Available ZIP files:"
-            find . -maxdepth 2 -type f -iname "*.zip"
-            exit 1
-          fi
-
-          echo "ZIP verified: $ZIP_FILE"
-          echo "ZIP_FILE=$ZIP_FILE" >> "$GITHUB_ENV"
+          test -f TrackRB_V10_Mandatory_History_FIXED.zip
+          unzip -t TrackRB_V10_Mandatory_History_FIXED.zip
 
       - name: Extract Android project
         run: |
           rm -rf project
           mkdir -p project
 
-          unzip -q "$ZIP_FILE" -d project
+          unzip -q TrackRB_V10_Mandatory_History_FIXED.zip -d project
 
-          echo "Extracted project files:"
-          find project -maxdepth 5 -type f | sort
+          echo "Extracted files:"
+          find project -maxdepth 4 -type f | head -100
 
       - name: Locate Gradle project
         run: |
           SETTINGS_FILE=$(find "$GITHUB_WORKSPACE/project" \
-            \( -name "settings.gradle" -o -name "settings.gradle.kts" \) \
+            -name settings.gradle \
+            -type f \
             -print -quit)
 
           if [ -z "$SETTINGS_FILE" ]; then
-            echo "ERROR: Gradle settings file not found."
-            find project -type f
+            echo "ERROR: settings.gradle not found"
             exit 1
           fi
 
           PROJECT_DIR=$(dirname "$SETTINGS_FILE")
 
-          echo "Gradle project directory: $PROJECT_DIR"
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
+
+          echo "Gradle project found at:"
+          echo "$PROJECT_DIR"
 
           ls -la "$PROJECT_DIR"
 
@@ -81,72 +68,49 @@ jobs:
           cd "$PROJECT_DIR"
 
           /tmp/gradle-8.9/bin/gradle \
-            --no-daemon \
             clean \
-            --stacktrace
+            --no-daemon
 
       - name: Build Debug APK
-        id: build_apk
-        continue-on-error: true
         run: |
-          set -o pipefail
+          set +e
 
           cd "$PROJECT_DIR"
 
           /tmp/gradle-8.9/bin/gradle \
-            --no-daemon \
             assembleDebug \
+            --no-daemon \
             --stacktrace \
-            --info \
-            2>&1 | tee "$GITHUB_WORKSPACE/build.log"
+            2>&1 | tee "$GITHUB_WORKSPACE/build-error.log"
 
-      - name: Show actual build error
-        if: steps.build_apk.outcome == 'failure'
-        run: |
-          echo "========================================"
-          echo "          ACTUAL BUILD ERROR"
-          echo "========================================"
+          BUILD_STATUS=${PIPESTATUS[0]}
 
-          grep -n -E \
-            "error:|ERROR|FAILURE|What went wrong|Execution failed|Caused by:" \
-            build.log | tail -n 100 || true
+          echo "Gradle exit code: $BUILD_STATUS"
 
-          echo ""
-          echo "========================================"
-          echo "          LAST 200 LOG LINES"
-          echo "========================================"
-
-          tail -n 200 build.log
+          exit $BUILD_STATUS
 
       - name: Upload build error log
-        if: steps.build_apk.outcome == 'failure'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: TrackRB-v9.1-Build-Error-Log
-          path: build.log
-          if-no-files-found: error
-
-      - name: Stop if build failed
-        if: steps.build_apk.outcome == 'failure'
-        run: |
-          echo "APK build failed."
-          echo "Please download the build error log."
-          exit 1
+          name: TrackRB-V10-Build-Logs
+          path: build-error.log
+          if-no-files-found: ignore
 
       - name: Find generated APK
         if: success()
         run: |
-          echo "Generated APK files:"
+          echo "Searching for APK..."
+
           find "$GITHUB_WORKSPACE" \
             -type f \
-            -name "app-debug.apk" \
+            -name "*.apk" \
             -print
 
       - name: Upload APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: TrackRB-v9.1-APK
+          name: TrackRB-V10-APK
           path: '**/build/outputs/apk/debug/app-debug.apk'
           if-no-files-found: error
-          
