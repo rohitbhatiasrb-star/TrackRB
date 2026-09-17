@@ -1,5 +1,5 @@
 
-name: Build TrackRB V10 APK
+name: Build TrackRB V11 APK
 
 on:
   workflow_dispatch:
@@ -18,20 +18,20 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Verify ZIP file
+      - name: Verify V11 ZIP
         run: |
-          test -f TrackRB_V10_Mandatory_History_FIXED.zip
-          unzip -t TrackRB_V10_Mandatory_History_FIXED.zip
+          test -f TrackRB_V11_Close_Final_History_FIXED.zip
+          unzip -t TrackRB_V11_Close_Final_History_FIXED.zip
 
       - name: Extract Android project
         run: |
           rm -rf project
           mkdir -p project
 
-          unzip -q TrackRB_V10_Mandatory_History_FIXED.zip -d project
+          unzip -q TrackRB_V11_Close_Final_History_FIXED.zip -d project
 
-          echo "Extracted files:"
-          find project -maxdepth 4 -type f | head -100
+          echo "Project files:"
+          find project -maxdepth 4 -type f
 
       - name: Locate Gradle project
         run: |
@@ -49,7 +49,7 @@ jobs:
 
           echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
 
-          echo "Gradle project found at:"
+          echo "Gradle project:"
           echo "$PROJECT_DIR"
 
           ls -la "$PROJECT_DIR"
@@ -63,54 +63,39 @@ jobs:
 
           /tmp/gradle-8.9/bin/gradle --version
 
-      - name: Clean project
-        run: |
-          cd "$PROJECT_DIR"
-
-          /tmp/gradle-8.9/bin/gradle \
-            clean \
-            --no-daemon
-
       - name: Build Debug APK
         run: |
-          set +e
+          set -o pipefail
 
           cd "$PROJECT_DIR"
 
           /tmp/gradle-8.9/bin/gradle \
-            assembleDebug \
+            clean assembleDebug \
             --no-daemon \
             --stacktrace \
             2>&1 | tee "$GITHUB_WORKSPACE/build-error.log"
-
-          BUILD_STATUS=${PIPESTATUS[0]}
-
-          echo "Gradle exit code: $BUILD_STATUS"
-
-          exit $BUILD_STATUS
 
       - name: Upload build error log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: TrackRB-V10-Build-Logs
+          name: TrackRB-V11-Build-Log
           path: build-error.log
           if-no-files-found: ignore
 
       - name: Find generated APK
         if: success()
         run: |
-          echo "Searching for APK..."
-
           find "$GITHUB_WORKSPACE" \
             -type f \
             -name "*.apk" \
             -print
 
-      - name: Upload APK
+      - name: Upload V11 APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: TrackRB-V10-APK
+          name: TrackRB-V11-APK
           path: '**/build/outputs/apk/debug/app-debug.apk'
           if-no-files-found: error
+          
