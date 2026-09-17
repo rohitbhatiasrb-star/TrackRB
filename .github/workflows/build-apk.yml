@@ -1,3 +1,4 @@
+
 name: Build APK
 
 on:
@@ -17,18 +18,19 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Locate and extract Android project
+      - name: Extract Android project
         shell: bash
         run: |
           set -e
 
           ZIP_FILE="$(find "$GITHUB_WORKSPACE" \
             -maxdepth 1 \
-            -name 'TrackRB_v7_History_Compressed_Camera.zip' \
+            -name 'TrackRB_v8_History_Compressed_Return_Users.zip' \
             -print -quit)"
 
           if [ -z "$ZIP_FILE" ]; then
-            echo "ERROR: Updated ZIP file not found."
+            echo "ERROR: ZIP file not found."
+            echo "Files available:"
             ls -la
             exit 1
           fi
@@ -85,125 +87,29 @@ jobs:
             assembleDebug \
             --stacktrace
 
+      - name: Verify APK
+        shell: bash
+        run: |
+          set -e
+
+          APK_FILE="$(find "$GITHUB_WORKSPACE/project" \
+            -type f \
+            -name 'app-debug.apk' \
+            -print -quit)"
+
+          if [ -z "$APK_FILE" ]; then
+            echo "ERROR: APK was not generated."
+            exit 1
+          fi
+
+          echo "APK generated successfully:"
+          ls -lh "$APK_FILE"
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: TrackRB-APK
           path: |
             project/**/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
-      - name: Extract Android project
-        shell: bash
-        run: |
-          set -e
-
-          ZIP_FILE="$GITHUB_WORKSPACE/TrackRB_v6_FinalPhoto_ReturnTracking.zip"
-
-          rm -rf "$GITHUB_WORKSPACE/project"
-          mkdir -p "$GITHUB_WORKSPACE/project"
-
-          unzip -q "$ZIP_FILE" -d "$GITHUB_WORKSPACE/project"
-
-          echo "Extracted files:"
-          find "$GITHUB_WORKSPACE/project" -maxdepth 6 -type f | head -200
-
-      - name: Locate Android project
-        shell: bash
-        run: |
-          set -e
-
-          SETTINGS_FILE=$(find "$GITHUB_WORKSPACE/project" \
-            -type f \
-            \( -name "settings.gradle" -o -name "settings.gradle.kts" \) \
-            -print -quit)
-
-          if [ -z "$SETTINGS_FILE" ]; then
-            echo "ERROR: settings.gradle not found"
-            find "$GITHUB_WORKSPACE/project" -maxdepth 8 -type f
-            exit 1
-          fi
-
-          PROJECT_DIR=$(dirname "$SETTINGS_FILE")
-
-          echo "ANDROID PROJECT FOUND:"
-          echo "$PROJECT_DIR"
-
-          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
-
-      - name: Show project files
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          echo "Building from:"
-          pwd
-
-          ls -la
-
-      - name: Install Gradle
-        shell: bash
-        run: |
-          set -e
-
-          curl -L \
-            -o /tmp/gradle.zip \
-            https://services.gradle.org/distributions/gradle-8.9-bin.zip
-
-          rm -rf /tmp/gradle-8.9
-
-          unzip -q /tmp/gradle.zip -d /tmp
-
-          /tmp/gradle-8.9/bin/gradle --version
-
-      - name: Build APK
-        shell: bash
-        run: |
-          set -e
-
-          cd "$PROJECT_DIR"
-
-          echo "BUILDING APK..."
-          pwd
-
-          /tmp/gradle-8.9/bin/gradle \
-            --no-daemon \
-            assembleDebug \
-            --stacktrace \
-            --info
-
-      - name: Find APK
-        shell: bash
-        run: |
-          set -e
-
-          echo "Searching for APK..."
-
-          find "$GITHUB_WORKSPACE" \
-            -type f \
-            -name "*.apk" \
-            -print
-
-          APK_FILE=$(find "$GITHUB_WORKSPACE" \
-            -type f \
-            -path "*/build/outputs/apk/debug/*.apk" \
-            -print -quit)
-
-          if [ -z "$APK_FILE" ]; then
-            echo "ERROR: APK not found"
-            exit 1
-          fi
-
-          echo "APK FOUND:"
-          echo "$APK_FILE"
-
-          echo "APK_FILE=$APK_FILE" >> "$GITHUB_ENV"
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: TrackRB-v6-APK
-          path: ${{ env.APK_FILE }}
           if-no-files-found: error
           
